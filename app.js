@@ -237,11 +237,20 @@ function calculateStats(trips) {
 let userLiveMarker = null;
 
 /**
- * Captura a localização via GPS em Tempo Real Direto (Sem Aproximação Cacheada)
+ * Captura a localização via GPS em Tempo Real Direto.
+ * Se o GPS já estiver ativo e exibido no mapa, grava INSTANTANEAMENTE (0s de espera)!
  */
 function triggerGpsCapture() {
   const statusText = document.getElementById('gps-status-text');
-  statusText.innerText = "Buscando Sinal GPS em Tempo Real...";
+
+  // 1. Se a localização REAL já estiver visível no mapa, grava na HORA (0.01s)!
+  if (pendingGpsLocation && pendingGpsLocation.lat && pendingGpsLocation.lng) {
+    handleGpsSuccessDirect(pendingGpsLocation.lat, pendingGpsLocation.lng);
+    return;
+  }
+
+  // 2. Caso ainda esteja buscando no primeiro segundo:
+  statusText.innerText = "Obtendo localização real...";
 
   if (!navigator.geolocation) {
     alert("Geolocalização não é suportada pelo navegador do seu dispositivo.");
@@ -249,19 +258,61 @@ function triggerGpsCapture() {
     return;
   }
 
-  // Leitura Direta do Chip de GPS de Alta Precisão (maximumAge: 0)
   navigator.geolocation.getCurrentPosition(
-    (position) => handleGpsSuccess(position),
-    (error) => {
-      console.warn("Tentativa 1 falhou, tentando leitura padrão de GPS:", error.message);
-      navigator.geolocation.getCurrentPosition(
-        (position) => handleGpsSuccess(position),
-        (err2) => handleGpsError(err2),
-        { enableHighAccuracy: false, timeout: 15000, maximumAge: 0 }
-      );
+    (position) => {
+      const lat = Number(position.coords.latitude.toFixed(6));
+      const lng = Number(position.coords.longitude.toFixed(6));
+      pendingGpsLocation = { lat, lng };
+      handleGpsSuccessDirect(lat, lng);
     },
-    { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+    (error) => handleGpsError(error),
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
   );
+}
+
+async function handleGpsSuccessDirect(lat, lng) {
+  const statusText = document.getElementById('gps-status-text');
+  const now = new Date();
+
+  pendingGpsLocation = { lat, lng };
+  statusText.innerText = `GPS Conectado`;
+
+  // Atualizar pino do motorista
+  updateUserLiveMarker(lat, lng);
+
+  // Centralizar mapa no ponto real do motorista
+  map.flyTo([lat, lng], 16, { animate: true, duration: 1.0 });
+
+  // Buscar Nome Real da Rua e Bairro de Cáceres via Geocoding
+  const locationInfo = await fetchRealAddressFromGps(lat, lng);
+
+  // Criar nova corrida salva DIRETAMENTE no Mapa de Calor
+  const newTrip = {
+    id: "trip-" + Date.now(),
+    lat: lat,
+    lng: lng,
+    notes: locationInfo.name || 'Embarque GPS 99',
+    neighborhood: locationInfo.neighborhood || 'Cáceres',
+    fare: null,
+    timestamp: now.toISOString(),
+    dateStr: now.toLocaleDateString('pt-BR'),
+    timeStr: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+    hour: now.getHours(),
+    dayOfWeek: now.getDay()
+  };
+
+  // Salvar no LocalStorage e atualizar Heatmap na hora!
+  currentTrips.push(newTrip);
+  saveData();
+  updateMapAndStats();
+
+  // Se o modal de histórico estiver aberto, atualiza a lista do modal também
+  if (document.getElementById('modal-history') && document.getElementById('modal-history').classList.contains('active')) {
+    renderFullHistoryModal();
+  }
+
+  // Notificação Flutuante (Toast)
+  showToastNotification(`🔥 Embarque gravado: ${locationInfo.name}`);
 }
 
 /**
