@@ -707,10 +707,18 @@ function setupEventListeners() {
 
   // Importar / Restaurar Arquivo (CSV ou JSON)
   const fileInput = document.getElementById('file-input');
-  if (document.getElementById('btn-trigger-import')) {
-    document.getElementById('btn-trigger-import').addEventListener('click', () => fileInput.click());
+  // Toggle Sidebar on mobile
+  if (document.getElementById('btn-toggle-stats')) {
+    document.getElementById('btn-toggle-stats').addEventListener('click', () => {
+      document.getElementById('sidebar').classList.toggle('open');
+    });
   }
-  fileInput.addEventListener('change', importFromJson);
+
+  if (document.getElementById('btn-toggle-settings')) {
+    document.getElementById('btn-toggle-settings').addEventListener('click', () => {
+      document.getElementById('sidebar').classList.toggle('open');
+    });
+  }
 }
 
 /**
@@ -761,51 +769,6 @@ function exportToJson() {
   const link = document.createElement("a");
   link.setAttribute("href", dataStr);
   link.setAttribute("download", `backup_caceres_99_${new Date().toISOString().slice(0, 10)}.json`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-
-  // Toggle Sidebar on mobile
-  document.getElementById('btn-toggle-stats').addEventListener('click', () => {
-    document.getElementById('sidebar').classList.toggle('open');
-  });
-
-  document.getElementById('btn-toggle-settings').addEventListener('click', () => {
-    document.getElementById('sidebar').classList.toggle('open');
-  });
-}
-
-/**
- * Exporta os dados das corridas em formato CSV
- */
-function exportToCsv() {
-  if (currentTrips.length === 0) {
-    alert("Não há dados para exportar.");
-    return;
-  }
-
-  let csvContent = "data:text/csv;charset=utf-8,ID,Latitude,Longitude,Local_Obs,Bairro,Valor_R$,Data,Hora,Dia_Semana\n";
-
-  currentTrips.forEach(t => {
-    const line = [
-      t.id,
-      t.lat,
-      t.lng,
-      `"${(t.notes || '').replace(/"/g, '""')}"`,
-      `"${t.neighborhood || ''}"`,
-      t.fare || '',
-      t.dateStr,
-      t.timeStr,
-      t.dayOfWeek
-    ].join(",");
-    csvContent += line + "\n";
-  });
-
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  link.setAttribute("download", `caceres_99_corridas_${new Date().toISOString().slice(0, 10)}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
