@@ -234,52 +234,102 @@ function calculateStats(trips) {
   document.getElementById('stat-peak-hour').innerText = `${String(peakHour).padStart(2, '0')}:00h`;
 }
 
+let userLiveMarker = null;
+
 /**
- * Captura a localização via GPS em Tempo Real
+ * Captura a localização via GPS em Tempo Real com tolerância e fallback de precisão
  */
 function triggerGpsCapture() {
   const statusText = document.getElementById('gps-status-text');
-  statusText.innerText = "Buscando Sinal GPS de Alta Precisão...";
+  statusText.innerText = "Buscando Sinal GPS...";
 
   if (!navigator.geolocation) {
-    alert("Geolocalização não é suportada pelo seu navegador.");
+    alert("Geolocalização não é suportada pelo navegador do seu dispositivo.");
     statusText.innerText = "GPS não suportado";
     return;
   }
 
+  // Tenta primeiro com Alta Precisão (GPS de Satélite)
   navigator.geolocation.getCurrentPosition(
-    (position) => {
-      const lat = Number(position.coords.latitude.toFixed(6));
-      const lng = Number(position.coords.longitude.toFixed(6));
-      
-      pendingGpsLocation = { lat, lng };
-
-      statusText.innerText = `GPS OK (Precisão: ~${Math.round(position.coords.accuracy)}m)`;
-
-      // Abrir Modal de Confirmação de Embarque
-      openPickupModal(lat, lng);
-
-      // Centralizar mapa no ponto do motorista
-      map.flyTo([lat, lng], 16, { animate: true, duration: 1.2 });
-    },
+    (position) => handleGpsSuccess(position),
     (error) => {
-      console.warn("Erro ao obter GPS, utilizando localização de Cáceres:", error.message);
-      statusText.innerText = "Falha no GPS real. Usando centro de Cáceres.";
-      
-      // Fallback para simulação em Cáceres com pequeno deslocamento aleatório
-      const fallbackLat = Number((-16.0716 + (Math.random() - 0.5) * 0.01).toFixed(6));
-      const fallbackLng = Number((-57.6789 + (Math.random() - 0.5) * 0.01).toFixed(6));
-      
-      pendingGpsLocation = { lat: fallbackLat, lng: fallbackLng };
-      openPickupModal(fallbackLat, fallbackLng);
-      map.flyTo([fallbackLat, fallbackLng], 16, { animate: true, duration: 1.2 });
+      console.warn("Tentativa de Alta Precisão falhou, tentando precisão padrão:", error.message);
+      // Segunda tentativa com precisão padrão (Rede/Wi-Fi/Torre de Celular)
+      navigator.geolocation.getCurrentPosition(
+        (position) => handleGpsSuccess(position),
+        (err2) => handleGpsError(err2),
+        { enableHighAccuracy: false, timeout: 12000, maximumAge: 30000 }
+      );
     },
-    {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0
-    }
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
   );
+}
+
+function handleGpsSuccess(position) {
+  const statusText = document.getElementById('gps-status-text');
+  const lat = Number(position.coords.latitude.toFixed(6));
+  const lng = Number(position.coords.longitude.toFixed(6));
+  const acc = Math.round(position.coords.accuracy || 10);
+  
+  pendingGpsLocation = { lat, lng };
+  statusText.innerText = `GPS Conectado (~${acc}m de precisão)`;
+
+  // Atualizar ou Criar Marcador do Motorista no Mapa
+  updateUserLiveMarker(lat, lng);
+
+  // Abrir Modal de Confirmação de Embarque
+  openPickupModal(lat, lng);
+
+  // Centralizar mapa no ponto real do motorista
+  map.flyTo([lat, lng], 16, { animate: true, duration: 1.2 });
+}
+
+function handleGpsError(error) {
+  const statusText = document.getElementById('gps-status-text');
+  console.warn("Erro final no GPS:", error);
+
+  let msg = "Não foi possível obter a posição atual.";
+  if (error.code === 1) { // PERMISSION_DENIED
+    msg = "Permissão de GPS negada. Por favor, clique no ícone de CADEADO 🔒 ao lado do link e escolha 'PERMITIR'.";
+  } else if (error.code === 2) { // POSITION_UNAVAILABLE
+    msg = "Sinal de GPS indisponível no momento (verifique se a localização do celular está ativa).";
+  } else if (error.code === 3) { // TIMEOUT
+    msg = "Tempo limite atingido para buscar o GPS. Verifique se está em local aberto.";
+  }
+
+  alert("⚠️ " + msg);
+  statusText.innerText = "GPS Indisponível - Usando Centro de Cáceres";
+
+  // Fallback seguro em Cáceres para permitir o uso da interface
+  const fallbackLat = Number((-16.0716 + (Math.random() - 0.5) * 0.008).toFixed(6));
+  const fallbackLng = Number((-57.6789 + (Math.random() - 0.5) * 0.008).toFixed(6));
+  
+  pendingGpsLocation = { lat: fallbackLat, lng: fallbackLng };
+  openPickupModal(fallbackLat, fallbackLng);
+  map.flyTo([fallbackLat, fallbackLng], 16, { animate: true, duration: 1.2 });
+}
+
+function updateUserLiveMarker(lat, lng) {
+  if (userLiveMarker) {
+    userLiveMarker.setLatLng([lat, lng]);
+  } else {
+    const carIcon = L.divIcon({
+      className: 'driver-live-pin',
+      html: `<div style="
+        background: #06b6d4;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        border: 3px solid #ffffff;
+        box-shadow: 0 0 15px #06b6d4;
+        animation: pulseGlow 1.5s infinite;
+      "></div>`,
+      iconSize: [18, 18],
+      iconAnchor: [9, 9]
+    });
+    userLiveMarker = L.marker([lat, lng], { icon: carIcon }).addTo(map);
+    userLiveMarker.bindTooltip("Sua Localização Atual", { permanent: false, direction: 'top' });
+  }
 }
 
 /**
@@ -289,11 +339,15 @@ function startGpsWatcher() {
   if (navigator.geolocation) {
     navigator.geolocation.watchPosition(
       (pos) => {
+        const lat = Number(pos.coords.latitude.toFixed(6));
+        const lng = Number(pos.coords.longitude.toFixed(6));
         const acc = Math.round(pos.coords.accuracy);
-        document.getElementById('gps-status-text').innerText = `GPS Conectado (~${acc}m)`;
+        
+        document.getElementById('gps-status-text').innerText = `GPS Ativo (~${acc}m)`;
+        updateUserLiveMarker(lat, lng);
       },
       (err) => {},
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 10000 }
     );
   }
 }
