@@ -748,7 +748,7 @@ function exportToCsv() {
 }
 
 /**
- * Importa dados de arquivo JSON
+ * Importa dados de arquivo Backup (suporta tanto CSV do Excel quanto JSON)
  */
 function importFromJson(event) {
   const file = event.target.files[0];
@@ -756,18 +756,68 @@ function importFromJson(event) {
 
   const reader = new FileReader();
   reader.onload = (e) => {
+    const text = e.target.result;
     try {
-      const data = JSON.parse(e.target.result);
+      // Se for arquivo CSV do Excel
+      if (file.name.toLowerCase().endsWith('.csv') || text.includes('Latitude,Longitude')) {
+        const lines = text.split(/\r\n|\n/);
+        const importedTrips = [];
+        
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+          
+          const parts = line.split(',');
+          if (parts.length >= 8) {
+            const id = parts[0] || ("trip-" + Math.random());
+            const lat = parseFloat(parts[1]);
+            const lng = parseFloat(parts[2]);
+            const notes = parts[3] ? parts[3].replace(/^"|"$/g, '') : 'Embarque GPS';
+            const neighborhood = parts[4] ? parts[4].replace(/^"|"$/g, '') : 'Cáceres';
+            const fare = parts[5] ? parseFloat(parts[5]) : null;
+            const dateStr = parts[6] || new Date().toLocaleDateString('pt-BR');
+            const timeStr = parts[7] || '12:00';
+            const dayOfWeek = parts[8] ? parseInt(parts[8]) : 0;
+
+            if (!isNaN(lat) && !isNaN(lng)) {
+              importedTrips.push({
+                id: id,
+                lat: lat,
+                lng: lng,
+                notes: notes,
+                neighborhood: neighborhood,
+                fare: isNaN(fare) ? null : fare,
+                timestamp: new Date().toISOString(),
+                dateStr: dateStr,
+                timeStr: timeStr,
+                hour: parseInt(timeStr.split(':')[0]) || 12,
+                dayOfWeek: dayOfWeek
+              });
+            }
+          }
+        }
+
+        if (importedTrips.length > 0) {
+          currentTrips = importedTrips;
+          saveData();
+          updateMapAndStats();
+          alert(`✅ Backup do Excel (CSV) importado com sucesso! ${importedTrips.length} corridas restauradas.`);
+          return;
+        }
+      }
+
+      // Tenta parsear formato JSON
+      const data = JSON.parse(text);
       if (Array.isArray(data)) {
         currentTrips = data;
         saveData();
         updateMapAndStats();
-        alert("✅ Backup importado com sucesso!");
+        alert(`✅ Backup importado com sucesso! ${data.length} corridas restauradas.`);
       } else {
-        alert("Formato de arquivo inválido. Deve ser um array de corridas.");
+        alert("Formato de arquivo inválido.");
       }
     } catch (err) {
-      alert("Erro ao ler o arquivo JSON: " + err.message);
+      alert("Erro ao ler o arquivo de backup: " + err.message);
     }
   };
   reader.readAsText(file);
