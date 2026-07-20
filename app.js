@@ -563,6 +563,55 @@ function deleteTrip(id) {
 }
 
 /**
+ * Modal Exclusivo de Histórico
+ */
+function openHistoryModal() {
+  const modal = document.getElementById('modal-history');
+  renderFullHistoryModal();
+  modal.classList.add('active');
+}
+
+function closeHistoryModal() {
+  document.getElementById('modal-history').classList.remove('active');
+}
+
+function renderFullHistoryModal() {
+  const container = document.getElementById('full-history-list');
+  const countEl = document.getElementById('modal-history-count');
+  
+  const filtered = getFilteredTrips();
+  countEl.innerText = filtered.length;
+
+  if (filtered.length === 0) {
+    container.innerHTML = '<div style="text-align:center; color: var(--text-muted); padding: 2rem; font-size: 0.85rem;">Nenhuma corrida gravada para os filtros selecionados.</div>';
+    return;
+  }
+
+  const sorted = [...filtered].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+  container.innerHTML = sorted.map(t => `
+    <div class="history-card-item">
+      <div class="history-card-main">
+        <strong>📍 ${t.notes || 'Embarque GPS'}</strong>
+        <span>📅 ${t.dateStr} às ${t.timeStr} • Bairro: ${t.neighborhood || 'Cáceres'}</span>
+      </div>
+      <div class="history-card-actions">
+        <button class="btn-delete-trip" onclick="deleteTripAndRefreshModal('${t.id}')" title="Apagar este ponto">
+          <i class="fa-solid fa-trash-can"></i>
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function deleteTripAndRefreshModal(id) {
+  currentTrips = currentTrips.filter(t => t.id !== id);
+  saveData();
+  updateMapAndStats();
+  renderFullHistoryModal();
+}
+
+/**
  * Event Listeners & Controles da Interface
  */
 function setupEventListeners() {
@@ -570,14 +619,30 @@ function setupEventListeners() {
   document.getElementById('btn-quick-gps').addEventListener('click', triggerGpsCapture);
   document.getElementById('btn-floating-capture').addEventListener('click', triggerGpsCapture);
 
+  // Botão de Histórico Dedicado no Cabeçalho
+  document.getElementById('btn-open-history').addEventListener('click', openHistoryModal);
+  document.getElementById('btn-close-history-modal').addEventListener('click', closeHistoryModal);
+  document.getElementById('btn-export-csv-modal').addEventListener('click', exportToCsv);
+
   // Modal actions
   document.getElementById('btn-close-modal').addEventListener('click', closePickupModal);
   document.getElementById('btn-cancel-pickup').addEventListener('click', closePickupModal);
   document.getElementById('btn-save-pickup').addEventListener('click', savePickupFromModal);
 
   // Filtros
-  document.getElementById('filter-period').addEventListener('change', updateMapAndStats);
-  document.getElementById('filter-day').addEventListener('change', updateMapAndStats);
+  document.getElementById('filter-period').addEventListener('change', () => {
+    updateMapAndStats();
+    if (document.getElementById('modal-history').classList.contains('active')) {
+      renderFullHistoryModal();
+    }
+  });
+
+  document.getElementById('filter-day').addEventListener('change', () => {
+    updateMapAndStats();
+    if (document.getElementById('modal-history').classList.contains('active')) {
+      renderFullHistoryModal();
+    }
+  });
 
   // Toggles de visualização
   document.getElementById('toggle-heatmap').addEventListener('change', (e) => {
@@ -609,6 +674,9 @@ function setupEventListeners() {
       currentTrips = [...currentTrips, ...generateCaceresDemoTrips(60)];
       saveData();
       updateMapAndStats();
+      if (document.getElementById('modal-history').classList.contains('active')) {
+        renderFullHistoryModal();
+      }
     }
   });
 
@@ -617,6 +685,9 @@ function setupEventListeners() {
       currentTrips = [];
       saveData();
       updateMapAndStats();
+      if (document.getElementById('modal-history').classList.contains('active')) {
+        renderFullHistoryModal();
+      }
     }
   });
 
