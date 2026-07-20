@@ -56,7 +56,7 @@ function initMap() {
 }
 
 /**
- * Carrega dados do LocalStorage ou carrega demonstração se estiver vazio
+ * Carrega dados salvos do LocalStorage (Inicia 100% limpo com dados reais)
  */
 function loadSavedData() {
   const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -65,12 +65,12 @@ function loadSavedData() {
       currentTrips = JSON.parse(saved);
     } catch (e) {
       console.error("Erro ao ler LocalStorage", e);
-      currentTrips = generateCaceresDemoTrips(50);
+      currentTrips = [];
       saveData();
     }
   } else {
-    // Primeira utilização: Carrega 50 corridas demonstrativas reais de Cáceres
-    currentTrips = generateCaceresDemoTrips(50);
+    // Inicia com mapa 100% limpo para coletar APENAS DADOS REAIS do motorista
+    currentTrips = [];
     saveData();
   }
 
@@ -237,11 +237,11 @@ function calculateStats(trips) {
 let userLiveMarker = null;
 
 /**
- * Captura a localização via GPS em Tempo Real com tolerância e fallback de precisão
+ * Captura a localização via GPS em Tempo Real Direto (Sem Aproximação Cacheada)
  */
 function triggerGpsCapture() {
   const statusText = document.getElementById('gps-status-text');
-  statusText.innerText = "Buscando Sinal GPS...";
+  statusText.innerText = "Buscando Sinal GPS em Tempo Real...";
 
   if (!navigator.geolocation) {
     alert("Geolocalização não é suportada pelo navegador do seu dispositivo.");
@@ -249,19 +249,18 @@ function triggerGpsCapture() {
     return;
   }
 
-  // Tenta primeiro com Alta Precisão (GPS de Satélite)
+  // Leitura Direta do Chip de GPS de Alta Precisão (maximumAge: 0)
   navigator.geolocation.getCurrentPosition(
     (position) => handleGpsSuccess(position),
     (error) => {
-      console.warn("Tentativa de Alta Precisão falhou, tentando precisão padrão:", error.message);
-      // Segunda tentativa com precisão padrão (Rede/Wi-Fi/Torre de Celular)
+      console.warn("Tentativa 1 falhou, tentando leitura padrão de GPS:", error.message);
       navigator.geolocation.getCurrentPosition(
         (position) => handleGpsSuccess(position),
         (err2) => handleGpsError(err2),
-        { enableHighAccuracy: false, timeout: 12000, maximumAge: 30000 }
+        { enableHighAccuracy: false, timeout: 15000, maximumAge: 0 }
       );
     },
-    { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+    { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
   );
 }
 
