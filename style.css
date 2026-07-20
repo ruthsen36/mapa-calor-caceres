@@ -675,10 +675,13 @@ input:checked + .slider::before {
     left: 0;
     top: 64px;
     height: calc(100dvh - 64px);
-    width: 85%;
-    max-width: 340px;
+    width: 88%;
+    max-width: 350px;
     transform: translateX(-100%);
-    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.7);
+    z-index: 10001;
+    padding-bottom: 7rem;
+    overflow-y: auto;
   }
 
   .sidebar.open {
@@ -688,10 +691,19 @@ input:checked + .slider::before {
   .floating-gps-bar {
     bottom: calc(16px + env(safe-area-inset-bottom, 0px));
     width: calc(100% - 32px);
+    z-index: 9999;
   }
 
   .btn-giant-pickup {
     width: 100%;
     justify-content: center;
+  }
+
+  .trips-list-container {
+    max-height: 350px;
+  }
+
+  .trips-list {
+    max-height: 280px;
   }
 }
