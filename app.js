@@ -619,8 +619,11 @@ function setupEventListeners() {
   document.getElementById('btn-quick-gps').addEventListener('click', triggerGpsCapture);
   document.getElementById('btn-floating-capture').addEventListener('click', triggerGpsCapture);
 
-  // Botão de Histórico Dedicado no Cabeçalho
+  // Botões de Histórico (Cabeçalho e Dock Flutuante do Celular)
   document.getElementById('btn-open-history').addEventListener('click', openHistoryModal);
+  if (document.getElementById('btn-floating-history-dock')) {
+    document.getElementById('btn-floating-history-dock').addEventListener('click', openHistoryModal);
+  }
   document.getElementById('btn-close-history-modal').addEventListener('click', closeHistoryModal);
   document.getElementById('btn-export-csv-modal').addEventListener('click', exportToCsv);
 

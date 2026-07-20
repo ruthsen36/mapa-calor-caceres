@@ -171,17 +171,24 @@
       <section class="map-wrapper">
         <div id="map"></div>
 
-        <!-- On-Map Floating Location Trigger -->
+        <!-- On-Map Floating Location Trigger & History Dock -->
         <div class="floating-gps-bar">
           <div class="gps-status" id="gps-status-indicator">
             <i class="fa-solid fa-satellite-dish spinner-icon"></i>
             <span id="gps-status-text">GPS Pronto para Captura</span>
           </div>
-          <button id="btn-floating-capture" class="btn-giant-pickup">
-            <div class="btn-pulse-ring"></div>
-            <i class="fa-solid fa-user-plus"></i>
-            <span>MARCAR EMBARQUE AQUI</span>
-          </button>
+
+          <div class="mobile-action-dock">
+            <button id="btn-floating-capture" class="btn-giant-pickup">
+              <div class="btn-pulse-ring"></div>
+              <i class="fa-solid fa-user-plus"></i>
+              <span>MARCAR EMBARQUE</span>
+            </button>
+            <button id="btn-floating-history-dock" class="btn-history-dock">
+              <i class="fa-solid fa-clock-rotate-left"></i>
+              <span>HISTÓRICO</span>
+            </button>
+          </div>
         </div>
       </section>
     </main>
