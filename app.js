@@ -626,6 +626,9 @@ function setupEventListeners() {
   }
   document.getElementById('btn-close-history-modal').addEventListener('click', closeHistoryModal);
   document.getElementById('btn-export-csv-modal').addEventListener('click', exportToCsv);
+  if (document.getElementById('btn-export-json-modal')) {
+    document.getElementById('btn-export-json-modal').addEventListener('click', exportToJson);
+  }
 
   // Modal actions
   document.getElementById('btn-close-modal').addEventListener('click', closePickupModal);
@@ -694,13 +697,74 @@ function setupEventListeners() {
     }
   });
 
-  // Exportar CSV
-  document.getElementById('btn-export-csv').addEventListener('click', exportToCsv);
+  // Exportar Excel (CSV) e Backup (JSON)
+  if (document.getElementById('btn-export-excel')) {
+    document.getElementById('btn-export-excel').addEventListener('click', exportToCsv);
+  }
+  if (document.getElementById('btn-export-json')) {
+    document.getElementById('btn-export-json').addEventListener('click', exportToJson);
+  }
 
-  // Importar JSON
+  // Importar / Restaurar Arquivo (CSV ou JSON)
   const fileInput = document.getElementById('file-input');
-  document.getElementById('btn-import-json').addEventListener('click', () => fileInput.click());
+  if (document.getElementById('btn-trigger-import')) {
+    document.getElementById('btn-trigger-import').addEventListener('click', () => fileInput.click());
+  }
   fileInput.addEventListener('change', importFromJson);
+}
+
+/**
+ * Exporta os dados das corridas em formato CSV (Excel)
+ */
+function exportToCsv() {
+  if (currentTrips.length === 0) {
+    alert("Não há dados para exportar.");
+    return;
+  }
+
+  let csvContent = "data:text/csv;charset=utf-8,ID,Latitude,Longitude,Local_Obs,Bairro,Valor_R$,Data,Hora,Dia_Semana\n";
+
+  currentTrips.forEach(t => {
+    const line = [
+      t.id,
+      t.lat,
+      t.lng,
+      `"${(t.notes || '').replace(/"/g, '""')}"`,
+      `"${t.neighborhood || ''}"`,
+      t.fare || '',
+      t.dateStr,
+      t.timeStr,
+      t.dayOfWeek
+    ].join(",");
+    csvContent += line + "\n";
+  });
+
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `caceres_99_corridas_${new Date().toISOString().slice(0, 10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+/**
+ * Exporta o backup completo das corridas em arquivo JSON
+ */
+function exportToJson() {
+  if (currentTrips.length === 0) {
+    alert("Não há dados para exportar.");
+    return;
+  }
+
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentTrips, null, 2));
+  const link = document.createElement("a");
+  link.setAttribute("href", dataStr);
+  link.setAttribute("download", `backup_caceres_99_${new Date().toISOString().slice(0, 10)}.json`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
 
   // Toggle Sidebar on mobile
   document.getElementById('btn-toggle-stats').addEventListener('click', () => {

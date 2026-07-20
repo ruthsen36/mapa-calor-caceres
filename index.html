@@ -18,7 +18,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   
   <!-- Custom CSS -->
-  <link rel="stylesheet" href="style.css?v=2.1">
+  <link rel="stylesheet" href="style.css?v=3.0">
 </head>
 <body>
   <div class="app-container">
@@ -141,18 +141,23 @@
           <h3><i class="fa-solid fa-database"></i> Gerenciar Dados</h3>
           <div class="btn-grid">
             <button id="btn-load-demo" class="btn-secondary">
-              <i class="fa-solid fa-wand-magic-sparkles"></i> Gerar Dados Demo Cáceres
+              <i class="fa-solid fa-wand-magic-sparkles"></i> Dados Demo Cáceres
             </button>
             <button id="btn-clear-data" class="btn-danger">
               <i class="fa-solid fa-trash-can"></i> Limpar Registros
             </button>
           </div>
           <div class="btn-grid margin-top-sm">
-            <button id="btn-export-csv" class="btn-outline">
-              <i class="fa-solid fa-file-csv"></i> Exportar CSV
+            <button id="btn-export-excel" class="btn-outline">
+              <i class="fa-solid fa-file-excel"></i> Baixar Excel (CSV)
             </button>
-            <button id="btn-import-json" class="btn-outline">
-              <i class="fa-solid fa-file-import"></i> Importar Backup
+            <button id="btn-export-json" class="btn-outline">
+              <i class="fa-solid fa-file-code"></i> Baixar Backup JSON
+            </button>
+          </div>
+          <div class="margin-top-sm">
+            <button id="btn-trigger-import" class="btn-outline" style="width: 100%;">
+              <i class="fa-solid fa-file-import"></i> Restaurar / Importar Arquivo
             </button>
             <input type="file" id="file-input" accept="*/*" style="display: none;">
           </div>
@@ -243,10 +248,15 @@
       </div>
       <div class="modal-body modal-history-body">
         <div class="history-summary-bar">
-          <span>Total: <strong id="modal-history-count">0</strong> corridas salvas</span>
-          <button id="btn-export-csv-modal" class="btn-outline-sm">
-            <i class="fa-solid fa-file-csv"></i> Baixar Excel (CSV)
-          </button>
+          <span>Total: <strong id="modal-history-count">0</strong> corridas</span>
+          <div style="display:flex; gap:0.4rem;">
+            <button id="btn-export-csv-modal" class="btn-outline-sm">
+              <i class="fa-solid fa-file-excel"></i> Excel
+            </button>
+            <button id="btn-export-json-modal" class="btn-outline-sm">
+              <i class="fa-solid fa-file-code"></i> JSON
+            </button>
+          </div>
         </div>
         <div id="full-history-list" class="full-history-list">
           <!-- Corridas geradas dinamicamente via JS -->
@@ -261,7 +271,7 @@
   <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
   
   <!-- App Scripts -->
-  <script src="caceres-data.js?v=2.1"></script>
-  <script src="app.js?v=2.1"></script>
+  <script src="caceres-data.js?v=3.0"></script>
+  <script src="app.js?v=3.0"></script>
 </body>
 </html>
