@@ -748,7 +748,7 @@ function exportToCsv() {
 }
 
 /**
- * Importa dados de arquivo Backup (suporta tanto CSV do Excel quanto JSON)
+ * Importa dados de arquivo Backup (suporta CSV do Excel BR e JSON)
  */
 function importFromJson(event) {
   const file = event.target.files[0];
@@ -758,8 +758,9 @@ function importFromJson(event) {
   reader.onload = (e) => {
     const text = e.target.result;
     try {
-      // Se for arquivo CSV do Excel
-      if (file.name.toLowerCase().endsWith('.csv') || text.includes('Latitude,Longitude')) {
+      const fileName = file.name.toLowerCase();
+      // Se for arquivo CSV do Excel ou conter dados tabulares
+      if (fileName.endsWith('.csv') || fileName.endsWith('.txt') || text.includes('Latitude') || text.includes('Longitude')) {
         const lines = text.split(/\r\n|\n/);
         const importedTrips = [];
         
@@ -767,16 +768,19 @@ function importFromJson(event) {
           const line = lines[i].trim();
           if (!line) continue;
           
-          const parts = line.split(',');
-          if (parts.length >= 8) {
-            const id = parts[0] || ("trip-" + Math.random());
-            const lat = parseFloat(parts[1]);
-            const lng = parseFloat(parts[2]);
+          // Suporta vírgula (,) ou ponto-e-vírgula (;) do Excel Português
+          const delimiter = line.includes(';') ? ';' : ',';
+          const parts = line.split(delimiter);
+          
+          if (parts.length >= 3) {
+            const id = parts[0] ? parts[0].replace(/^"|"$/g, '') : ("trip-" + Math.random());
+            const lat = parseFloat(parts[1].replace(/^"|"$/g, '').replace(',', '.'));
+            const lng = parseFloat(parts[2].replace(/^"|"$/g, '').replace(',', '.'));
             const notes = parts[3] ? parts[3].replace(/^"|"$/g, '') : 'Embarque GPS';
             const neighborhood = parts[4] ? parts[4].replace(/^"|"$/g, '') : 'Cáceres';
-            const fare = parts[5] ? parseFloat(parts[5]) : null;
-            const dateStr = parts[6] || new Date().toLocaleDateString('pt-BR');
-            const timeStr = parts[7] || '12:00';
+            const fare = parts[5] ? parseFloat(parts[5].replace(/^"|"$/g, '').replace(',', '.')) : null;
+            const dateStr = parts[6] ? parts[6].replace(/^"|"$/g, '') : new Date().toLocaleDateString('pt-BR');
+            const timeStr = parts[7] ? parts[7].replace(/^"|"$/g, '') : '12:00';
             const dayOfWeek = parts[8] ? parseInt(parts[8]) : 0;
 
             if (!isNaN(lat) && !isNaN(lng)) {
@@ -801,7 +805,7 @@ function importFromJson(event) {
           currentTrips = importedTrips;
           saveData();
           updateMapAndStats();
-          alert(`✅ Backup do Excel (CSV) importado com sucesso! ${importedTrips.length} corridas restauradas.`);
+          alert(`✅ Backup importado com sucesso! ${importedTrips.length} corridas restauradas.`);
           return;
         }
       }
