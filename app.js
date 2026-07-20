@@ -270,18 +270,81 @@ function handleGpsSuccess(position) {
   const lat = Number(position.coords.latitude.toFixed(6));
   const lng = Number(position.coords.longitude.toFixed(6));
   const acc = Math.round(position.coords.accuracy || 10);
-  
+  const now = new Date();
+
   pendingGpsLocation = { lat, lng };
   statusText.innerText = `GPS Conectado (~${acc}m de precisão)`;
 
-  // Atualizar ou Criar Marcador do Motorista no Mapa
+  // Atualizar pino do motorista
   updateUserLiveMarker(lat, lng);
 
-  // Abrir Modal de Confirmação de Embarque
-  openPickupModal(lat, lng);
+  // Encontrar o bairro / POI de Cáceres mais próximo
+  const closestPoi = findClosestCaceresPoi(lat, lng);
 
-  // Centralizar mapa no ponto real do motorista
+  // Criar nova corrida salva DIRETAMENTE no Mapa de Calor
+  const newTrip = {
+    id: "trip-" + Date.now(),
+    lat: lat,
+    lng: lng,
+    notes: closestPoi.name || 'Embarque GPS 99',
+    neighborhood: closestPoi.neighborhood || 'Centro',
+    fare: null,
+    timestamp: now.toISOString(),
+    dateStr: now.toLocaleDateString('pt-BR'),
+    timeStr: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+    hour: now.getHours(),
+    dayOfWeek: now.getDay()
+  };
+
+  // Salvar no LocalStorage e atualizar Heatmap na hora!
+  currentTrips.push(newTrip);
+  saveData();
+  updateMapAndStats();
+
+  // Centralizar mapa suavemente no ponto real do motorista
   map.flyTo([lat, lng], 16, { animate: true, duration: 1.2 });
+
+  // Mostrar Notificação Flutuante (Toast)
+  showToastNotification(`🔥 Embarque gravado! (${closestPoi.name || 'Cáceres'})`);
+}
+
+/**
+ * Exibe notificação flutuante rápida de confirmação na tela
+ */
+function showToastNotification(message) {
+  let toast = document.getElementById('app-toast-notification');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'app-toast-notification';
+    toast.style.cssText = `
+      position: fixed;
+      top: 75px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #ff6b00, #ff2200);
+      color: #ffffff;
+      padding: 0.75rem 1.25rem;
+      border-radius: 30px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      box-shadow: 0 8px 25px rgba(255, 107, 0, 0.6);
+      z-index: 10000;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    `;
+    document.body.appendChild(toast);
+  }
+
+  toast.innerHTML = `<i class="fa-solid fa-circle-check"></i> <span>${message}</span>`;
+  toast.style.opacity = '1';
+  toast.style.transform = 'translateX(-50%) translateY(0)';
+
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(-50%) translateY(-20px)';
+  }, 3500);
 }
 
 function handleGpsError(error) {
@@ -298,15 +361,7 @@ function handleGpsError(error) {
   }
 
   alert("⚠️ " + msg);
-  statusText.innerText = "GPS Indisponível - Usando Centro de Cáceres";
-
-  // Fallback seguro em Cáceres para permitir o uso da interface
-  const fallbackLat = Number((-16.0716 + (Math.random() - 0.5) * 0.008).toFixed(6));
-  const fallbackLng = Number((-57.6789 + (Math.random() - 0.5) * 0.008).toFixed(6));
-  
-  pendingGpsLocation = { lat: fallbackLat, lng: fallbackLng };
-  openPickupModal(fallbackLat, fallbackLng);
-  map.flyTo([fallbackLat, fallbackLng], 16, { animate: true, duration: 1.2 });
+  statusText.innerText = "GPS Indisponível - Verifique as permissões";
 }
 
 function updateUserLiveMarker(lat, lng) {
