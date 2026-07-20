@@ -266,43 +266,70 @@ function triggerGpsCapture() {
 }
 
 /**
- * Consulta a API de Geocoding Reverso (OpenStreetMap Nominatim)
- * para obter o NOME REAL da Rua e Bairro em Cáceres.
+ * Consulta APIs de Geocoding Reverso (OpenStreetMap Nominatim + BigDataCloud)
+ * para obter o NOME REAL da Rua e Bairro onde o motorista está em Cáceres.
  */
 async function fetchRealAddressFromGps(lat, lng) {
+  // 1. Primeira Tentativa: OpenStreetMap Nominatim (Endereço detalhado por rua)
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4500);
+
     const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
     const response = await fetch(url, {
+      signal: controller.signal,
       headers: { 'Accept-Language': 'pt-BR' }
     });
-    
+    clearTimeout(timeoutId);
+
     if (response.ok) {
       const data = await response.json();
       const addr = data.address || {};
-      
-      const road = addr.road || addr.pedestrian || addr.street || addr.suburb || '';
-      const suburb = addr.suburb || addr.neighbourhood || addr.city_district || addr.residential || addr.town || 'Cáceres';
-      
+
+      const road = addr.road || addr.pedestrian || addr.street || addr.residential || addr.path || '';
+      const suburb = addr.suburb || addr.neighbourhood || addr.city_district || addr.quarter || addr.subdivision || '';
+      const city = addr.town || addr.city || 'Cáceres';
+
       let nameStr = '';
-      if (road && suburb && road !== suburb) {
+      if (road && suburb && road.toLowerCase() !== suburb.toLowerCase()) {
         nameStr = `${road} - ${suburb}`;
       } else if (road) {
-        nameStr = road;
-      } else {
-        nameStr = suburb || 'Cáceres';
+        nameStr = `${road} (${city})`;
+      } else if (suburb) {
+        nameStr = `${suburb} (${city})`;
       }
 
-      return {
-        name: nameStr,
-        neighborhood: suburb || 'Cáceres'
-      };
+      if (nameStr) {
+        return {
+          name: nameStr,
+          neighborhood: suburb || city || 'Cáceres'
+        };
+      }
     }
   } catch (e) {
-    console.warn("Erro ao obter endereço real via Geocoding:", e);
+    console.warn("Consulta ao OpenStreetMap falhou, tentando backup:", e);
   }
 
-  // Fallback se estiver offline ou falhar a requisição
-  return findClosestCaceresPoi(lat, lng);
+  // 2. Segunda Tentativa: BigDataCloud Reverse Geocoding
+  try {
+    const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=pt`);
+    if (res.ok) {
+      const data = await res.json();
+      const locName = data.locality || data.city || 'Cáceres';
+      return {
+        name: `Rua em ${locName}`,
+        neighborhood: locName
+      };
+    }
+  } catch (e2) {
+    console.warn("Consulta ao BigDataCloud falhou:", e2);
+  }
+
+  // 3. Fallback Seguro com Coordenadas Reais (NUNCA usa locais estáticos simulados)
+  return {
+    name: `Embarque GPS (${lat.toFixed(5)}, ${lng.toFixed(5)})`,
+    neighborhood: 'Cáceres'
+  };
 }
 
 async function handleGpsSuccess(position) {
