@@ -707,6 +707,22 @@ function setupEventListeners() {
 
   // Importar / Restaurar Arquivo (CSV ou JSON)
   const fileInput = document.getElementById('file-input');
+  if (fileInput) {
+    fileInput.addEventListener('change', importFromJson);
+  }
+
+  if (document.getElementById('btn-trigger-import')) {
+    document.getElementById('btn-trigger-import').addEventListener('click', () => {
+      if (fileInput) fileInput.click();
+    });
+  }
+
+  if (document.getElementById('btn-import-json')) {
+    document.getElementById('btn-import-json').addEventListener('click', () => {
+      if (fileInput) fileInput.click();
+    });
+  }
+
   // Toggle Sidebar on mobile
   if (document.getElementById('btn-toggle-stats')) {
     document.getElementById('btn-toggle-stats').addEventListener('click', () => {
