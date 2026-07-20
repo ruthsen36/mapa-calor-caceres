@@ -16,7 +16,16 @@ document.addEventListener('DOMContentLoaded', () => {
   loadSavedData();
   setupEventListeners();
   startGpsWatcher();
+  registerServiceWorker();
 });
+
+function registerServiceWorker() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js')
+      .then((reg) => console.log('[PWA] Service Worker ativo:', reg.scope))
+      .catch((err) => console.warn('[PWA] Service Worker erro:', err));
+  }
+}
 
 /**
  * Inicializa o Mapa Leaflet com estilo escuro e camada de calor
