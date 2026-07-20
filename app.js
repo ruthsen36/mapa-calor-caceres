@@ -265,7 +265,47 @@ function triggerGpsCapture() {
   );
 }
 
-function handleGpsSuccess(position) {
+/**
+ * Consulta a API de Geocoding Reverso (OpenStreetMap Nominatim)
+ * para obter o NOME REAL da Rua e Bairro em Cáceres.
+ */
+async function fetchRealAddressFromGps(lat, lng) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
+    const response = await fetch(url, {
+      headers: { 'Accept-Language': 'pt-BR' }
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      const addr = data.address || {};
+      
+      const road = addr.road || addr.pedestrian || addr.street || addr.suburb || '';
+      const suburb = addr.suburb || addr.neighbourhood || addr.city_district || addr.residential || addr.town || 'Cáceres';
+      
+      let nameStr = '';
+      if (road && suburb && road !== suburb) {
+        nameStr = `${road} - ${suburb}`;
+      } else if (road) {
+        nameStr = road;
+      } else {
+        nameStr = suburb || 'Cáceres';
+      }
+
+      return {
+        name: nameStr,
+        neighborhood: suburb || 'Cáceres'
+      };
+    }
+  } catch (e) {
+    console.warn("Erro ao obter endereço real via Geocoding:", e);
+  }
+
+  // Fallback se estiver offline ou falhar a requisição
+  return findClosestCaceresPoi(lat, lng);
+}
+
+async function handleGpsSuccess(position) {
   const statusText = document.getElementById('gps-status-text');
   const lat = Number(position.coords.latitude.toFixed(6));
   const lng = Number(position.coords.longitude.toFixed(6));
@@ -273,21 +313,25 @@ function handleGpsSuccess(position) {
   const now = new Date();
 
   pendingGpsLocation = { lat, lng };
-  statusText.innerText = `GPS Conectado (~${acc}m de precisão)`;
+  statusText.innerText = `Buscando rua e bairro exatos em Cáceres...`;
 
   // Atualizar pino do motorista
   updateUserLiveMarker(lat, lng);
 
-  // Encontrar o bairro / POI de Cáceres mais próximo
-  const closestPoi = findClosestCaceresPoi(lat, lng);
+  // Centralizar mapa suavemente no ponto real do motorista
+  map.flyTo([lat, lng], 16, { animate: true, duration: 1.2 });
 
-  // Criar nova corrida salva DIRETAMENTE no Mapa de Calor
+  // Obter o NOME REAL da Rua e Bairro de Cáceres via Geocoding
+  const locationInfo = await fetchRealAddressFromGps(lat, lng);
+  statusText.innerText = `GPS Conectado (~${acc}m de precisão)`;
+
+  // Criar nova corrida salva DIRETAMENTE no Mapa de Calor com Endereço REAL
   const newTrip = {
     id: "trip-" + Date.now(),
     lat: lat,
     lng: lng,
-    notes: closestPoi.name || 'Embarque GPS 99',
-    neighborhood: closestPoi.neighborhood || 'Centro',
+    notes: locationInfo.name || 'Embarque GPS 99',
+    neighborhood: locationInfo.neighborhood || 'Cáceres',
     fare: null,
     timestamp: now.toISOString(),
     dateStr: now.toLocaleDateString('pt-BR'),
@@ -301,11 +345,8 @@ function handleGpsSuccess(position) {
   saveData();
   updateMapAndStats();
 
-  // Centralizar mapa suavemente no ponto real do motorista
-  map.flyTo([lat, lng], 16, { animate: true, duration: 1.2 });
-
-  // Mostrar Notificação Flutuante (Toast)
-  showToastNotification(`🔥 Embarque gravado! (${closestPoi.name || 'Cáceres'})`);
+  // Mostrar Notificação Flutuante (Toast) com NOME REAL DA RUA E BAIRRO
+  showToastNotification(`🔥 Embarque gravado: ${locationInfo.name}`);
 }
 
 /**
